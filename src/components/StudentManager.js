@@ -1,106 +1,88 @@
-import React, { useState } from 'react';
-import { Button, Form, Table, Container, Row, Col, Alert } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Container, Table, Button } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
+// URL API chính xác
+const API_URL = 'https://student-api-nestjs.onrender.com';
 
 const StudentManager = () => {
-  const [students, setStudents] = useState([
-    { name: 'Nguyen Van A', code: 'A001', active: true },
-    { name: 'Tran Van B', code: 'B002', active: false },
-  ]);
-  const [newStudent, setNewStudent] = useState({ name: '', code: '', active: false });
-  const [selectedCount, setSelectedCount] = useState(0);
+  const [students, setStudents] = useState([]);
+  const navigate = useNavigate();
 
-  const handleAddStudent = () => {
-    setStudents([newStudent, ...students]);
-    setNewStudent({ name: '', code: '', active: false });
+  // Gọi API khi component được render
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const fetchStudents = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/students`);
+      console.log('API Response:', response.data); // Kiểm tra dữ liệu trả về
+
+      const studentsData = response.data.data || []; // Đảm bảo dữ liệu là mảng
+      setStudents(studentsData); // Cập nhật state với dữ liệu sinh viên
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      alert('Failed to fetch students. Please try again later.');
+      setStudents([]); // Đặt thành mảng rỗng khi có lỗi
+    }
   };
 
-  const handleDeleteStudent = (index) => {
-    const updatedStudents = students.filter((_, i) => i !== index);
-    setStudents(updatedStudents);
+  const handleAdd = async (newStudent) => {
+    try {
+      const response = await axios.post(`${API_URL}/students`, newStudent);
+      setStudents([response.data, ...students]); // Thêm sinh viên mới vào đầu danh sách
+    } catch (error) {
+      console.error('Error adding student:', error);
+    }
   };
 
-  const handleSelectChange = (isSelected) => {
-    setSelectedCount(isSelected ? selectedCount + 1 : selectedCount - 1);
-  };
-
-  const handleClearAll = () => {
-    setStudents([]);
-    setSelectedCount(0);
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`${API_URL}/students/${id}`);
+      setStudents(students.filter((student) => student._id !== id)); // Lọc bỏ sinh viên đã xóa
+    } catch (error) {
+      console.error('Error deleting student:', error);
+    }
   };
 
   return (
-    <Container>
-      <h1 className="text-center mt-4">Student Manager</h1>
-
-      <Form className="mb-4">
-        <Row>
-          <Col>
-            <Form.Control
-              type="text"
-              placeholder="Enter Student Name"
-              value={newStudent.name}
-              onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
-            />
-          </Col>
-          <Col>
-            <Form.Control
-              type="text"
-              placeholder="Enter Student Code"
-              value={newStudent.code}
-              onChange={(e) => setNewStudent({ ...newStudent, code: e.target.value })}
-            />
-          </Col>
-          <Col>
-            <Form.Check
-              type="checkbox"
-              label="Active"
-              checked={newStudent.active}
-              onChange={(e) => setNewStudent({ ...newStudent, active: e.target.checked })}
-            />
-          </Col>
-          <Col>
-            <Button onClick={handleAddStudent}>Add</Button>
-          </Col>
-        </Row>
-      </Form>
-
-      <Alert variant="info">Total Selected Students: {selectedCount}</Alert>
-
+    <Container className="mt-4">
       <Table striped bordered hover>
         <thead>
           <tr>
-            <th>Select</th>
             <th>Name</th>
             <th>Code</th>
             <th>Active</th>
-            <th>Action</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {students.map((student, index) => (
-            <tr key={index}>
-              <td>
-                <Form.Check
-                  type="checkbox"
-                  onChange={(e) => handleSelectChange(e.target.checked)}
-                />
-              </td>
-              <td>{student.name}</td>
-              <td>{student.code}</td>
-              <td>{student.active ? 'Yes' : 'No'}</td>
-              <td>
-                <Button variant="danger" onClick={() => handleDeleteStudent(index)}>
-                  Delete
-                </Button>
-              </td>
+          {students.length > 0 ? (
+            students.map((student) => (
+              <tr key={student._id}>
+                <td>
+                  <Button variant="link" onClick={() => navigate(`/student/${student._id}`)}>
+                    {student.name}
+                  </Button>
+                </td>
+                <td>{student.studentCode}</td>
+                <td>{student.isActive ? 'Yes' : 'No'}</td>
+                <td>
+                  <Button variant="danger" onClick={() => handleDelete(student._id)}>
+                    Delete
+                  </Button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="4">No students available</td>
             </tr>
-          ))}
+          )}
         </tbody>
       </Table>
-
-      <Button variant="warning" onClick={handleClearAll}>
-        Clear
-      </Button>
     </Container>
   );
 };
